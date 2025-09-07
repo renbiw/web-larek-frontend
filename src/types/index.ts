@@ -16,28 +16,9 @@ export interface IOrderForm {
   phone: string;
 }
 
-export interface IOrder extends IOrderForm {
+export interface IBasket {
   items: [];
-  total?: number;
+  total: number;
 }
 
-export type FormErrors = Partial<Record<keyof IOrder, string>>;
-
-export interface IAppState {
-  store: IProduct;
-  basket: IProduct;
-  order: IOrder | null;
-  formErrors: FormErrors; 
-  addToBasket(product: IProduct): void; //добавить в корзину
-  removeFromBasket(id: string): void; // удалить из корзины
-  clearBasket(): void; // очистить корзину
-  getAmountBasket(): number; // получить кол-во товаров в корзине
-  getTotalPriceBasket(): number; // получить общую сумму товаров в корзине
-  setItems(): void; // записать все id товаров
-  setOrder(field: keyof IOrder, value: string): void; // обновить поле заказа 
-  validateFormContacts(): boolean; // валидация формы контактов
-  validateFormOrder(): boolean; // валидация заказа
-  clearOrder(): void; // очистить заказ
-  setProducts(items: IProduct[]): void; // преобразование данных из api
-  clearSelections(): void;
-}
+export type FormErrors = Partial<Record<keyof IOrderForm, string>>;

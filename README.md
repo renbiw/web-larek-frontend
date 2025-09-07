@@ -41,12 +41,12 @@ npm run build
 yarn build
 ```
 
-Приложение по паттерну MVP
+Используется паттерн MVP
 Model: За хранение данных (корзина, товары, заказ, ошибки) и состояний приложения отвечает класс AppState.
 
-View:  Page, Order, Basket, Card - классы отображения, которые взаимодействуют с пользователем и получают данные от пользователя, обновляют DOM.
+View:  Page, Order, Contacts, Basket, Card, Modal, Form - классы отображения, которые взаимодействуют с пользователем и получают данные от пользователя, обновляют DOM.
 
-Presenter: EventEmitter реализует связь между Model и View, выступает посредником в передаче событий и обновлении данных.
+Presenter: в данном проекте презентер будет реализован в файле index.ts. Он использует брокер событий (EventEmitter), который отслеживает и распространяет события между компонентами. За счет подписки на события и обработки входящих сообщений презентер реагирует на изменения данных или действий пользователя, актуализирует состояние модели и обновляет представление.
 
 *****
 Типы данных
@@ -68,20 +68,10 @@ Presenter: EventEmitter реализует связь между Model и View, 
   email: string;
   phone: string;
 
-интерфейс IOrder расширяет предыдущий класс, добавлены такие поля, как полная сумма покупки и список товаров: 
-  items: [];
-  total?: number;
+интерфейс IBasket содержит данные корзины, которые необходимы для оформления заказа - id массива товаров в корзине и общую стоимость товаров.
+  items: []; 
+  total: number;
 
-интерфейс ICard описывает поля карточки товара в интерфейсе пользователя. Содержит следующие поля:
-  id: string;
-  title: string;
-  description: string;
-  image: string;
-  category: CardCategory;
-  price: number | null;
-  selected: boolean;
-
-интерфейс IAppState описывает поля и методы для работы с приложением, содержит поля для хранения товаров, заказов, корзины, ошибок при валидации форм. Имеет методы для работы с карточками товарами, корзиной и формами. 
 
 интерфейс IShopAPI описывает методы для работы с API. Метод getProducts возвращает список товаров, 
 метод getProduct возвращет товар по id, метод makeOrder отправляет данные из формы, заполненной пользователем, при совершении покупки.
@@ -92,15 +82,15 @@ Presenter: EventEmitter реализует связь между Model и View, 
   locked: boolean; // проверка прокрутки страницы
 
 интерфейс IBasketView  содержит поля:
-  items: HTMLElement[];
-  price: number;
+  items: HTMLElement[]; // массив html элементов, представленных в корзине для отображения 
+  price: number; // значение стоимость товара 
 
 *****
 Компоненты модели данных
 *****
 
 класс Model - базовый абстрактный класс для всех моделей данных в приложении.
-export abstract class Model<T> {
+abstract class Model<T> {
     constructor(data: Partial<T>, protected events: IEvents) {
         Object.assign(this, data);
     }
@@ -108,50 +98,52 @@ export abstract class Model<T> {
     emitChanges(event: string, payload?: object)
 }
 
-export class AppState extends Model<IAppState> {
-  store: Product[] = [];
-  basket: Product[] = [];
-   order: IOrder = {
-    payment: '',  
-    address: '',
-    email: '',
-    phone: '',
-    items: [],   
-    total: null,   
+класс AppState отвечает за хранение и управление основными данными приложения, включая каталог товаров, текущий просмотренный товар, корзину, данные заказа и ошибки форм. Также он осуществляет оповещение через события при изменении данных.
+
+class AppState
+{ 
+  store: Product[] = []; // массив товаров каталога. хранит список всех доступных товаров.
+  basket: IBasket = { // объект корзины, содержащий:
+		items: [], // массив ID товаров, добавленных в корзину.
+		total: 0 // общая сумма стоимости товаров в корзине.
+	};
+   order: IOrderForm = { // объект с данными текущего оформления заказа:
+    payment: '',   // способ оплаты
+    address: '',  // адрес 
+    email: '', // электронная почта
+    phone: '' // номер телефона
   };
-   formErrors: FormErrors = {};
+   formErrors: FormErrors = {}; // объект с сообщениями об ошибках валидации полей формы заказа
 
-  addToBasket(product: IProduct): void
+  addToBasket(product: IProduct): void //добавить в корзину
 
-  removeFromBasket(id: string): void 
+  removeFromBasket(id: string): void  // удалить из корзины 
 
-  clearBasket(): void 
+  clearBasket(): void // очистить корзину
 
-  getAmountBasket(): number
+  getAmountBasket(): number // получить кол-во товаров в корзин
 
-  getTotalPriceBasket(): number 
+  getTotalPriceBasket(): number // получить общую сумму товаров в корзине 
 
-  setItems(): void 
+  setOrder(field: keyof IOrder, value: string): void // обновить поле заказа
 
-  setOrder(field: keyof IOrder, value: string): void 
+  validateFormContacts(): boolean // валидация формы контактов 
 
-  validateFormContacts(): boolean 
+  validateFormOrder(): boolean // валидация формы заказа 
 
-  validateFormOrder(): boolean 
+  clearOrder(): void //очистить заказ
 
-  clearOrder(): void
+  setProducts(items: IProduct[]): // преобразование данных из api
 
-  setProducts(items: IProduct[]): 
-
-  clearSelections(): void 
-}
+  clearSelections(): void // сбросить выбранные товары после завершения покупки
+ }
 
 *****
 Компоненты отображения 
 *****
 
 Базовый компонент
-export abstract class Component<T> {
+abstract class Component<T> {
     protected constructor(protected readonly container: HTMLElement) 
 
     // Инструментарий для работы с DOM в дочерних компонентах
@@ -178,35 +170,101 @@ export abstract class Component<T> {
     render(data?: Partial<T>): HTMLElement 
 }
 
-класс Card компонент карточки товара, содержит поля для данных карточки товара, сеттеры и геттеры для данных карточки
+Класс Card представляет собой компонент пользовательского интерфейса для отображения карточки товара с различными атрибутами и действиями. связывает данные товара с DOM-элементами, управляет их отображением и пользовательскими событиями. Имеет сеттеры для данных карточки.
 
-export class Card<T> extends Component<ICard<T>> {
+class Card<T> extends Component<IProduct> {
     protected _title: HTMLElement;
     protected _image: HTMLImageElement;
     protected _category: HTMLElement;
     protected _price: HTMLElement;
     protected _button?: HTMLButtonElement;
+    protected _description: HTMLElement;
+    constructor(container: HTMLElement, actions?: ICardActions) {
+		super(container);}
 
-    constructor(protected blockName: string, container: HTMLElement, actions?: ICardActions) {
-      super(container);
+
+    set id(value: string) 
+    set title(value: string)
+    set price(value: string) 
+    set category(value: string) 
+    set description(value: string) 
+    set button(value: string) 
+    set image(value: string)
+}
+
+класс Basket отвечает за отображение и управление корзиной на пользовательском интерфейсе. 
+Отображение списка добавленных товаров, хранение общей стоимости товаров, управление кнопкой оформления заказа
+class Basket extends Component<IBasketView> {
+    protected _list: HTMLElement;
+    protected _price: HTMLElement;
+    protected _button: HTMLElement;
+  constructor(container: HTMLElement, protected events: EventEmitter) {
+        super(container);
+
+        this._list = ensureElement<HTMLElement>('.basket__list', this.container);
+        this._price = this.container.querySelector('.basket__price');
+        this._button = this.container.querySelector('.basket__action');
+  }
+  set items(items: HTMLElement[])
+  set total(price: number)
+}
+
+Класс Form представляет собой компонент пользовательского интерфейса для работы с HTML-формой, обеспечивает управление состоянием формы, её валидацией и событиями взаимодействия. Интерфейс IFormState содержит два поля: valid: boolean - флаг, указывающий, является ли текущие данные формы валидными, errors: string[] массив строк, содержащий сообщения об ошибках валидации или другие проблемы, связанные с данными формы.
+class Form<T> extends Component<IFormState> {
+    protected _submit: HTMLButtonElement;
+    protected _errors: HTMLElement;
+
+    constructor(protected container: HTMLFormElement, protected events: IEvents) {
+        super(container);
+        this._submit = ensureElement<HTMLButtonElement>('button[type=submit]', this.container);
+        this._errors = ensureElement<HTMLElement>('.form__errors', this.container);
     }
 }
 
-класс Basket отвечает за отображение и управление корзиной на пользовательском интерфейсе.
-Отображение списка добавленных товаров, хранение общей стоимости товаров, управление кнопкой оформления заказа.
 
-класс Order через сеттеры phone и email напрямую обновляет значения соответствующих полей формы в DOM, обеспечивает удобный доступ и управление данными формы.
-export class Order extends Form<IOrderForm> {
-    constructor(container: HTMLFormElement, events: IEvents) {
-        super(container, events);
+Класс Modal — компонент пользовательского интерфейса, реализующий модальное окно. отвечает за отображение и скрытие модального окна, обработку взаимодействий с пользователем и уведомление приложения о своих изменениях через события. Содержит методы открыти, закрытия модального окна, а так же метод render для обновления данных. Интерфейс IModalData содержит поле content: HTMLElement - представляет содержимое, которое должно быть показано внутри модального окна.
+export class Modal extends Component<IModalData> {
+    protected _closeButton: HTMLButtonElement; // элемент кнопки закрытия 
+    protected _content: HTMLElement; // контейнер для содержимого модального окна
+
+    constructor(container: HTMLElement, protected events: IEvents) {
+        super(container);
     }
 
-    set phone(value: string)
-    set email(value: string)
+    set content(value: HTMLElement) 
+    open() 
+    close()
+    render(data: IModalData): HTMLElement
+}
+
+класс Order управляет формой заказа, реализует методы для обновления значений способа оплаты и адреса. содержит свойства-сеттеры payment и address, которые позволяют устанавливать значения соответствующих полей формы.
+class Order extends Form<IOrderForm> {
+    protected _paymentCard: HTMLButtonElement;
+		protected _paymentCash: HTMLButtonElement;
+		protected _address: HTMLInputElement;
+    constructor(container: HTMLFormElement, events: IEvents) {
+		super(container, events);
+	}
+    set payment(value: string)
+
+    set address(value: string)
+}
+
+класс Contacts управляет формой контактов пользователя, реализует методы для обновления значений email и телефона. содержит свойства-сеттеры phone и email, которые позволяют устанавливать значения соответствующих полей формы.
+class Contacts extends Form<IOrderForm> {
+	protected _email: HTMLInputElement;
+	protected _phone: HTMLInputElement;
+
+	constructor(container: HTMLFormElement, events: IEvents) {
+		super(container, events);
+	}
+
+	set phone(value: string)
+  set email(value: string)
 }
 
 класс Page компонент страницы магазина позволяет управлять состоянием страницы, её визуальными элементами и реакцией на взаимодействия пользователя.
-export class Page extends Component<IPage> {
+class Page extends Component<IPage> {
   protected _counter: HTMLElement;
   protected _catalog: HTMLElement;
   protected _wrapper: HTMLElement;
@@ -214,14 +272,6 @@ export class Page extends Component<IPage> {
 
   constructor(container: HTMLElement, protected events: IEvents) {
     super(container);
-    this._counter = ensureElement<HTMLElement>('.header__basket-counter');
-    this._catalog = ensureElement<HTMLElement>('.gallery');
-    this._wrapper = ensureElement<HTMLElement>('.page__wrapper');
-    this._basket = ensureElement<HTMLElement>('.header__basket');
-
-    // При клике на корзину сгенерировать событие открытия корзины
-    this._basket.addEventListener('click', () => {
-    });
   }
 
   // Обновить число товаров в счётчике корзины
@@ -238,7 +288,12 @@ export class Page extends Component<IPage> {
 
 Presenter
 
-роль презентера в проекте выполняет класс EventEmitter. Класс имеет методы on , off , emit — для подписки на событие, отписки от события и уведомления подписчиков о наступлении события соответственно.
+в данном проекте презентер будет реализован в файле index.ts. Он использует брокер событий (EventEmitter), который отслеживает и распространяет события между компонентами. За счет подписки на события и обработки входящих сообщений презентер реагирует на изменения данных или действий пользователя, актуализирует состояние модели и обновляет представление.
+
+Класс EventEmitter 
+
+Реализует паттерн «Наблюдатель» и позволяет подписываться на события и уведомлять подписчиков
+о наступлении события. Класс имеет методы on , off , emit — для подписки на событие, отписки от события и уведомления подписчиков о наступлении события соответственно.
 Дополнительно реализованы методы onAll и offAll — для подписки на все события и сброса всех
 подписчиков.
 Интересным дополнением является метод trigger , генерирующий заданное событие с заданными
@@ -246,9 +301,37 @@ Presenter
 классы будут генерировать события, не будучи при этом напрямую зависимыми от
 класса EventEmitter.
 
+События приложения
 
-Компоненты взаимодействуют через события в EventEmitter
+Приложение реализует взаимодействие компонентов через брокер событий (EventEmitter). Ниже перечислены основные события, отражающие ключевые действия и изменения состояния на различных страницах.
+
+
+items:change — обновление каталога товаров.
+
+card:select — выбор карточки в каталоге 
+
+basket:open — открытие модального окна корзины товаров
+
+basket:add — добавление товара в корзину (клик на кнопку "Купить")
+
+basket:remove — удаление товара из корзины (клик на кнопку "Удалить")
+
+basket:change — изменение списка товаров в корзине 
+
+modal:open — открытие любого модального окна
+
+modal:close — закрытие любого модального окна по клику на оверлей или на кнопку "Закрыть"
+
+order:submit - клик на кнопку "Далее" в модальном окне с выбором оплаты и адресом 
+
+contacts:submit - клик на кнопку "Оплатить" в модальном окне с вводом адреса и e-mail
+
+orderFormErrors:change - инициируется при вводе данных в инпут формы заказа
+
+contactsFormErrors:change - инициируется при вводы данных в инпут формы с контактными данными
+
+
 
 Пример сценария:
 
-при добавлении товара в Basket генерируется событие basket:add. Это событие подписывается компонентом Page, который обновляет счётчик. При клике на корзину на Page инициирует событие basket:open для открытия модального окна корзины. Каталог обновляется через событие с новым списком карточек.
+при добавлении товара в Basket генерируется событие basket:add. Это событие обрабатывается презентером, презентер получает обновленные данные состояния приложения из модели appState, а затем обновляет счётчик товаров на странице через свойство page.counter, отображая текущее количество товаров из корзины.

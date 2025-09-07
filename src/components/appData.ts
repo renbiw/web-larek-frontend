@@ -1,5 +1,6 @@
 import { Model} from "./base/model";
-import { IAppState, IOrder, IProduct, FormErrors} from "../types";
+import {IOrderForm, IProduct, FormErrors, IBasket} from "../types";
+import { EventEmitter } from "./base/events";
 
 export class Product extends Model<IProduct> {
   id: string;
@@ -10,18 +11,19 @@ export class Product extends Model<IProduct> {
   price: number| null;
 }
 
-export class AppState extends Model<IAppState> {
+export class AppState {
   store: Product[] = [];
-  basket: Product[] = [];
-   order: IOrder = {
+  basket: IBasket = {
+		items: [],
+		total: 0
+	};
+   order: IOrderForm = {
     payment: '',  
     address: '',
     email: '',
-    phone: '',
-    items: [],   
-    total: null,   
+    phone: ''
   };
-   formErrors: FormErrors = {};
+  formErrors: FormErrors = {};
 
   addToBasket(product: IProduct): void {
   }
@@ -30,20 +32,19 @@ export class AppState extends Model<IAppState> {
   }
 
   clearBasket(): void {
+    this.basket.items = [];
+		this.basket.total = 0;
   }
 
   getAmountBasket(): number {
-    return this.basket.length;
+    return null;
   }
 
   getTotalPriceBasket(): number {
-    return this.basket.reduce((sum, prod) => sum + (prod.price ?? 0), 0);
+    return null;
   }
 
-  setItems(): void {
-  }
-
-  setOrder(field: keyof IOrder, value: string): void {
+  setOrder(field: keyof IOrderForm, value: string): void {
   }
 
   validateFormContacts(): boolean {
@@ -58,9 +59,7 @@ export class AppState extends Model<IAppState> {
       payment: '',
       address: '',
       email: '',
-      phone: '',
-      items: [],
-      total: null,
+      phone: ''
     };
   }
 
