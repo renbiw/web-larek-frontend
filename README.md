@@ -53,6 +53,7 @@ Presenter: в данном проекте презентер будет реал
 *****
 
 тип FormErrors - тип объекта ошибок
+тип PaymentType = 'Онлайн' | 'При получении' | '' тип способов оплаты
 
 интерфейс IProduct описывает данные товара, приходящие с сервера и содержит следующие поля:
   id: string; 
@@ -63,7 +64,7 @@ Presenter: в данном проекте презентер будет реал
   price: number| null;
 
 интерфейс IOrderForm описывает часть данных, связанную с контактной информацией, необходим для валидации:
-  payment: 'Онлайн' | 'При получении';
+  payment: PaymentType;
   address: string;
   email: string;
   phone: string;
@@ -88,14 +89,10 @@ Presenter: в данном проекте презентер будет реал
 *****
 Компоненты модели данных
 *****
-
-класс Model - базовый абстрактный класс для всех моделей данных в приложении.
+класс Model - Базовая модель, чтобы можно было отличить ее от простых объектов с данными
 abstract class Model<T> {
-    constructor(data: Partial<T>, protected events: IEvents) {
-        Object.assign(this, data);
-    }
-    // Сообщить всем что модель поменялась
-    emitChanges(event: string, payload?: object)
+    constructor(data: Partial<T>, protected events: IEvents) {}
+    emitChanges(event: string, payload?: object){}
 }
 
 класс AppState отвечает за хранение и управление основными данными приложения, включая каталог товаров, текущий просмотренный товар, корзину, данные заказа и ошибки форм. Также он осуществляет оповещение через события при изменении данных.
@@ -113,19 +110,22 @@ class AppState
     email: '', // электронная почта
     phone: '' // номер телефона
   };
-   formErrors: FormErrors = {}; // объект с сообщениями об ошибках валидации полей формы заказа
+  preview: string | null; // товар, открытый в модальном окне
+  formErrors: FormErrors = {}; // объект с сообщениями об ошибках валидации полей формы заказа
 
   addToBasket(product: IProduct): void //добавить в корзину
 
-  removeFromBasket(id: string): void  // удалить из корзины 
+  removeFromBasket(product: IProduct): void  // удалить из корзины 
 
   clearBasket(): void // очистить корзину
+
+  checkItemInBasket( product: IProduct): boolean // проверка находится ли товар в корзине
 
   getAmountBasket(): number // получить кол-во товаров в корзин
 
   getTotalPriceBasket(): number // получить общую сумму товаров в корзине 
 
-  setOrder(field: keyof IOrder, value: string): void // обновить поле заказа
+  setOrder(field: keyof IOrderForm, value: string): void // обновить поле заказа
 
   validateFormContacts(): boolean // валидация формы контактов 
 
@@ -135,7 +135,7 @@ class AppState
 
   setProducts(items: IProduct[]): // преобразование данных из api
 
-  clearSelections(): void // сбросить выбранные товары после завершения покупки
+  setPreview(item: IProduct):  void //  обновляет текущий товар предпросмотра
  }
 
 *****
@@ -170,6 +170,13 @@ abstract class Component<T> {
     render(data?: Partial<T>): HTMLElement 
 }
 
+это расширение базового класса Component, добавляющее хранение объекта событий events и предназначенное для представления View в архитектуре приложения
+class View<T> extends Component<T> {
+	constructor(container: HTMLElement, protected readonly events: IEvents) {
+		super(container);
+	}
+}
+
 Класс Card представляет собой компонент пользовательского интерфейса для отображения карточки товара с различными атрибутами и действиями. связывает данные товара с DOM-элементами, управляет их отображением и пользовательскими событиями. Имеет сеттеры для данных карточки.
 
 class Card<T> extends Component<IProduct> {
@@ -200,10 +207,6 @@ class Basket extends Component<IBasketView> {
     protected _button: HTMLElement;
   constructor(container: HTMLElement, protected events: EventEmitter) {
         super(container);
-
-        this._list = ensureElement<HTMLElement>('.basket__list', this.container);
-        this._price = this.container.querySelector('.basket__price');
-        this._button = this.container.querySelector('.basket__action');
   }
   set items(items: HTMLElement[])
   set total(price: number)
@@ -216,9 +219,11 @@ class Form<T> extends Component<IFormState> {
 
     constructor(protected container: HTMLFormElement, protected events: IEvents) {
         super(container);
-        this._submit = ensureElement<HTMLButtonElement>('button[type=submit]', this.container);
-        this._errors = ensureElement<HTMLElement>('.form__errors', this.container);
     }
+    protected onInputChange(field: keyof T, value: string) // вызывается при каждом изменении поля
+    set valid(value: boolean)  // управляет состоянием кнопки
+    set errors(value: string) // управляет отображением ошибок в формах
+    render(state: Partial<T> & IFormState) // обрабатывает ошибки и валидность форм
 }
 
 
@@ -228,7 +233,7 @@ export class Modal extends Component<IModalData> {
     protected _content: HTMLElement; // контейнер для содержимого модального окна
 
     constructor(container: HTMLElement, protected events: IEvents) {
-        super(container);
+        super(container, events);
     }
 
     set content(value: HTMLElement) 
@@ -242,6 +247,7 @@ class Order extends Form<IOrderForm> {
     protected _paymentCard: HTMLButtonElement;
 		protected _paymentCash: HTMLButtonElement;
 		protected _address: HTMLInputElement;
+
     constructor(container: HTMLFormElement, events: IEvents) {
 		super(container, events);
 	}
@@ -310,26 +316,29 @@ items:change — обновление каталога товаров.
 
 card:select — выбор карточки в каталоге 
 
+preview: change - открытие модального окна с подробным превью выбранного товара
+
 basket:open — открытие модального окна корзины товаров
 
-basket:add — добавление товара в корзину (клик на кнопку "Купить")
-
-basket:remove — удаление товара из корзины (клик на кнопку "Удалить")
-
-basket:change — изменение списка товаров в корзине 
+basket:change — изменение списка товаров в корзине
 
 modal:open — открытие любого модального окна
 
 modal:close — закрытие любого модального окна по клику на оверлей или на кнопку "Закрыть"
 
-order:submit - клик на кнопку "Далее" в модальном окне с выбором оплаты и адресом 
+order:open — открытие модального окна с формой выбора способа оплаты и адреса
 
-contacts:submit - клик на кнопку "Оплатить" в модальном окне с вводом адреса и e-mail
+order:submit — клик на кнопку "Далее" в форме заказа, открывает форму с контактными данными
 
-orderFormErrors:change - инициируется при вводе данных в инпут формы заказа
+contacts:submit — клик на кнопку "Оплатить" в форме контактных данных, инициирует отправку заказа
 
-contactsFormErrors:change - инициируется при вводы данных в инпут формы с контактными данными
+orderFormErrors:change — событие с объектом ошибок в форме заказа, для отображения ошибок
 
+contactsFormErrors:change — событие с объектом ошибок в форме контактов, для отображения ошибок
+
+order.*:change — событие при изменении любого поля в форме заказа (динамическая валидация и обновление данных)
+
+contacts.*:change — событие при изменении любого поля в форме контактов
 
 
 Пример сценария:

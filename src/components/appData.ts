@@ -1,71 +1,121 @@
-import { Model} from "./base/model";
-import {IOrderForm, IProduct, FormErrors, IBasket} from "../types";
-import { EventEmitter } from "./base/events";
+import { Model } from './base/model';
+import {
+	IOrderForm,
+	IProduct,
+	FormErrors,
+	IBasket,
+	PaymentType,
+} from '../types';
+import { emailType, phoneType } from '../utils/constants';
+import { EventEmitter, IEvents } from './base/events';
 
 export class Product extends Model<IProduct> {
-  id: string;
-  description: string;
-  image: string;
-  title: string;
-  category: string;
-  price: number| null;
+	id: string;
+	description: string;
+	image: string;
+	title: string;
+	category: string;
+	price: number | null;
 }
 
 export class AppState {
-  store: Product[] = [];
-  basket: IBasket = {
+	store: IProduct[] = [];
+	basket: IBasket = {
 		items: [],
-		total: 0
+		total: 0,
 	};
-   order: IOrderForm = {
-    payment: '',  
-    address: '',
-    email: '',
-    phone: ''
-  };
-  formErrors: FormErrors = {};
+	order: IOrderForm = {
+		payment: '',
+		address: '',
+		email: '',
+		phone: '',
+	};
+	preview: string | null;
+	formErrors: FormErrors = {};
 
-  addToBasket(product: IProduct): void {
-  }
+	constructor(protected events: IEvents) {}
 
-  removeFromBasket(id: string): void {
-  }
+	addToBasket(product: IProduct): void {
+		this.basket.items.push(product.id);
+		this.basket.total += product.price;
+		this.events.emit('basket:change', this.basket);
+	}
 
-  clearBasket(): void {
-    this.basket.items = [];
+	removeFromBasket(product: IProduct): void {
+		this.basket.items = this.basket.items.filter((id) => id !== product.id);
+		this.basket.total -= product.price;
+		this.events.emit('basket:change', this.basket);
+	}
+
+	clearBasket(): void {
+		this.basket.items = [];
 		this.basket.total = 0;
-  }
+		this.events.emit('basket:change', this.basket);
+	}
 
-  getAmountBasket(): number {
-    return null;
-  }
+	checkItemInBasket(product: IProduct): boolean {
+		return this.basket.items.includes(product.id);
+	}
 
-  getTotalPriceBasket(): number {
-    return null;
-  }
+	getAmountBasket(): number {
+		return this.basket.items.length;
+	}
 
-  setOrder(field: keyof IOrderForm, value: string): void {
-  }
+	getTotalPriceBasket(): number {
+		return this.basket.total;
+	}
 
-  validateFormContacts(): boolean {
-    return true;
-  };
-  validateFormOrder(): boolean {
-    return true;
-  };
-  clearOrder(): void {
-    // очистка данных заказа
-    this.order = {
-      payment: '',
-      address: '',
-      email: '',
-      phone: ''
-    };
-  }
+	setOrder(field: keyof IOrderForm, value: string): void {
+		if (field === 'payment') {
+			this.order.payment = value as PaymentType;
+		} else {
+			this.order[field] = value;
+		}
+	}
 
-  setProducts(items: IProduct[]): void {
-  }
+	validateFormContacts(): boolean {
+		const errors: typeof this.formErrors = {};
+		if (!this.order.email) {
+			errors.email = 'Необходимо указать email';
+		} else if (!emailType.test(this.order.email)) {
+			errors.email = 'Неправильно указан email';
+		}
+		if (!this.order.phone) {
+			errors.phone = 'Необходимо указать телефон';
+		} else if (!phoneType.test(this.order.phone)) {
+			errors.phone = 'Неправильно указан телефон';
+		}
+		this.formErrors = errors;
+		this.events.emit('contactsFormErrors:change', this.formErrors);
+		return Object.keys(errors).length === 0;
+	}
+	validateFormOrder(): boolean {
+		const errors: typeof this.formErrors = {};
+		if (!this.order.address) {
+			errors.address = 'Необходимо указать адрес';
+		}
+		this.formErrors = errors;
+		this.events.emit('orderFormErrors:change', this.formErrors);
+		return Object.keys(errors).length === 0;
+	}
 
-  clearSelections(): void {
-  }
+	clearOrder(): void {
+		// очистка данных заказа
+		this.order = {
+			payment: '',
+			address: '',
+			email: '',
+			phone: '',
+		};
+	}
+
+	setProducts(items: IProduct[]): void {
+		this.store = items;
+		this.events.emit('items:change', items);
+	}
+
+	setPreview(item: IProduct) {
+		this.preview = item.id;
+		this.events.emit('preview:change', item);
+	}
 }

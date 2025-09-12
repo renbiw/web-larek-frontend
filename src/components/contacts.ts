@@ -1,7 +1,6 @@
-import {Form} from "./common/form";
-import {IOrderForm} from "../types";
-import {EventEmitter, IEvents} from "./base/events";
-import {ensureElement} from "../utils/utils";
+import { Form } from './common/form';
+import { IOrderForm } from '../types';
+import { IEvents } from './base/events';
 
 export class Contacts extends Form<IOrderForm> {
 	protected _email: HTMLInputElement;
@@ -12,11 +11,12 @@ export class Contacts extends Form<IOrderForm> {
 	}
 
 	set phone(value: string) {
-        (this.container.elements.namedItem('phone') as HTMLInputElement).value = value;
-    }
+		(this.container.elements.namedItem('phone') as HTMLInputElement).value =
+			value;
+	}
 
-    set email(value: string) {
-        (this.container.elements.namedItem('email') as HTMLInputElement).value = value;
-    }
+	set email(value: string) {
+		(this.container.elements.namedItem('email') as HTMLInputElement).value =
+			value;
+	}
 }
-
