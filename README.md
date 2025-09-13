@@ -99,11 +99,8 @@ abstract class Model<T> {
 
 class AppState
 { 
-  store: Product[] = []; // массив товаров каталога. хранит список всех доступных товаров.
-  basket: IBasket = { // объект корзины, содержащий:
-		items: [], // массив ID товаров, добавленных в корзину.
-		total: 0 // общая сумма стоимости товаров в корзине.
-	};
+  store: IProduct[] = []; // массив товаров каталога. хранит список всех доступных товаров.
+  basket: string []: [] // массив товаров в корзине
    order: IOrderForm = { // объект с данными текущего оформления заказа:
     payment: '',   // способ оплаты
     address: '',  // адрес 
@@ -179,7 +176,7 @@ class View<T> extends Component<T> {
 
 Класс Card представляет собой компонент пользовательского интерфейса для отображения карточки товара с различными атрибутами и действиями. связывает данные товара с DOM-элементами, управляет их отображением и пользовательскими событиями. Имеет сеттеры для данных карточки.
 
-class Card<T> extends Component<IProduct> {
+class Card extends Component<IProduct> {
     protected _title: HTMLElement;
     protected _image: HTMLImageElement;
     protected _category: HTMLElement;
@@ -210,6 +207,7 @@ class Basket extends Component<IBasketView> {
   }
   set items(items: HTMLElement[])
   set total(price: number)
+  setCheckoutButtonEnabled(enabled: boolean) // метод для блокировки кнопки "оформить"
 }
 
 Класс Form представляет собой компонент пользовательского интерфейса для работы с HTML-формой, обеспечивает управление состоянием формы, её валидацией и событиями взаимодействия. Интерфейс IFormState содержит два поля: valid: boolean - флаг, указывающий, является ли текущие данные формы валидными, errors: string[] массив строк, содержащий сообщения об ошибках валидации или другие проблемы, связанные с данными формы.
@@ -250,10 +248,10 @@ class Order extends Form<IOrderForm> {
 
     constructor(container: HTMLFormElement, events: IEvents) {
 		super(container, events);
-	}
-    set payment(value: string)
+  }
 
     set address(value: string)
+    updatePaymentSelection(payment: PaymentType): void // для изменения отображения способа оплаты
 }
 
 класс Contacts управляет формой контактов пользователя, реализует методы для обновления значений email и телефона. содержит свойства-сеттеры phone и email, которые позволяют устанавливать значения соответствующих полей формы.

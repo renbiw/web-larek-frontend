@@ -1,5 +1,5 @@
 import { Form } from './common/form';
-import { IOrderForm } from '../types';
+import { IOrderForm, PaymentType } from '../types';
 import { IEvents } from './base/events';
 import { ensureElement } from '../utils/utils';
 
@@ -18,21 +18,34 @@ export class Order extends Form<IOrderForm> {
 			this.container
 		);
 		this._paymentCard.addEventListener('click', () => {
-			this.payment = 'card';
-			this.onInputChange('payment', 'card');
+			this.events.emit('order.payment:change', {
+				field: 'payment',
+				value: 'Онлайн',
+			});
 		});
+
 		this._paymentCash.addEventListener('click', () => {
-			this.payment = 'cash';
-			this.onInputChange('payment', 'cash');
+			this.events.emit('order.payment:change', {
+				field: 'payment',
+				value: 'При получении',
+			});
 		});
-	}
-	set payment(value: string) {
-		this.toggleClass(this._paymentCard, 'button_alt-active', value === 'card');
-		this.toggleClass(this._paymentCash, 'button_alt-active', value === 'cash');
 	}
 
 	set address(value: string) {
 		(this.container.elements.namedItem('address') as HTMLInputElement).value =
 			value;
+	}
+	updatePaymentSelection(payment: PaymentType): void {
+		this.toggleClass(
+			this._paymentCard,
+			'button_alt-active',
+			payment === 'Онлайн'
+		);
+		this.toggleClass(
+			this._paymentCash,
+			'button_alt-active',
+			payment === 'При получении'
+		);
 	}
 }

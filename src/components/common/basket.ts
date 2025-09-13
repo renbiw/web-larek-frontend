@@ -1,9 +1,5 @@
 import { View } from '../base/component';
-import {
-	cloneTemplate,
-	createElement,
-	ensureElement,
-} from '../../utils/utils';
+import { cloneTemplate, createElement, ensureElement } from '../../utils/utils';
 import { IEvents } from '../base/events';
 
 interface IBasketView {
@@ -47,5 +43,11 @@ export class Basket extends View<IBasketView> {
 
 	set total(price: number) {
 		this.setText(this._price, price + ' синапсов');
+	}
+
+	setCheckoutButtonEnabled(enabled: boolean) {
+		if (this._button) {
+			(this._button as HTMLButtonElement).disabled = !enabled;
+		}
 	}
 }

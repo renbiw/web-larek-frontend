@@ -6,7 +6,7 @@ interface ICardActions {
 	onClick: (event: MouseEvent) => void;
 }
 
-export class Card<T> extends Component<IProduct> {
+export class Card extends Component<IProduct> {
 	protected _title: HTMLElement;
 	protected _image: HTMLImageElement;
 	protected _category: HTMLElement;

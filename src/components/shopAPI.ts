@@ -1,5 +1,5 @@
 import { Api, ApiListResponse } from './base/api';
-import { IProduct, IOrderForm } from '../types';
+import { IProduct, IOrderForm, IBasket } from '../types';
 
 export interface IOrderResult {
 	total: number;
@@ -32,7 +32,7 @@ export class ShopAPI extends Api implements IShopAPI {
 			}))
 		);
 	}
-	makeOrder(order: IOrderForm): Promise<IOrderResult> {
+	makeOrder(order: IBasket): Promise<IOrderResult> {
 		return this.post(`/order/`, order).then((data: IOrderResult) => data);
 	}
 }

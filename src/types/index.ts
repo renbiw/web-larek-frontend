@@ -16,7 +16,7 @@ export interface IOrderForm {
 	phone: string;
 }
 
-export interface IBasket {
+export interface IBasket extends IOrderForm {
 	items: string[];
 	total: number;
 }
