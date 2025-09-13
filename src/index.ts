@@ -35,11 +35,6 @@ const basket = new Basket(events);
 const orderForm = new Order(cloneTemplate(orderTemplate), events);
 const contactsForm = new Contacts(cloneTemplate(contactsTemplate), events);
 const modal = new Modal(modalTemplate, events);
-const success = new Success(cloneTemplate(successTemplate), events, {
-	onClick: () => {
-		events.emit('modal:close');
-	},
-});
 
 // Дальше идет бизнес-логика
 // Поймали событие, сделали что нужно
@@ -164,6 +159,11 @@ events.on('contacts:submit', () => {
 			total: appData.getTotalPriceBasket(),
 		})
 		.then((data) => {
+			const success = new Success(cloneTemplate(successTemplate), events, {
+				onClick: () => {
+					modal.close();
+				},
+			});
 			modal.render({
 				content: success.render(),
 			});
